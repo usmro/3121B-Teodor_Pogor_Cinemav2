@@ -3,6 +3,10 @@
 #include <string>
 #include <ctime>
 #include <stdexcept>
+#include "Film.h"
+#include "Sala.h"
+#include "Rezervare.h"
+#include "Cinematograf.h"
 
 // ============================================================
 // CULORI
@@ -20,143 +24,6 @@ const sf::Color C_GREEN   (75,173,122);
 const sf::Color C_DARK    (10,9,7);
 
 enum Screen { SALA, FILME, PLATA, RAPORT };
-
-// ============================================================
-// CLASA FILM
-// ============================================================
-class Film {
-public:
-    std::string titlu;
-    std::string format; // 2D, 3D, IMAX, 4DX
-    std::string gen;
-    std::string ora;
-    int durata;
-    int nrSala;
-
-    Film(const std::string& t, const std::string& f,
-         const std::string& g, const std::string& o,
-         int d, int s)
-        : titlu(t), format(f), gen(g), ora(o), durata(d), nrSala(s) {}
-
-    // Calcul pret in functie de tipul filmului (cerinta facultativa)
-    int getPret() const {
-        if (format == "IMAX") return 50;
-        if (format == "4DX")  return 45;
-        if (format == "3D")   return 35;
-        return 30; // 2D
-    }
-
-    std::string getInfo() const {
-        return format + " | " + ora + " | Sala " + std::to_string(nrSala);
-    }
-};
-
-// ============================================================
-// CLASA SALA - matrice de locuri
-// ============================================================
-class Sala {
-public:
-    enum StareLoc { LIBER, OCUPAT, SELECTAT };
-
-    int nrSala;
-    int randuri;
-    int coloane;
-    std::vector<std::vector<StareLoc>> locuri; // matrice de locuri
-
-    Sala(int nr, int r, int c) : nrSala(nr), randuri(r), coloane(c) {
-        locuri.assign(r, std::vector<StareLoc>(c, LIBER));
-    }
-
-    // Ocupa un loc - arunca exceptie daca e invalid sau deja ocupat
-    void ocupaLoc(int rand, int col) {
-        if (rand < 0 || rand >= randuri || col < 0 || col >= coloane)
-            throw std::out_of_range("Index loc invalid: R" +
-                std::to_string(rand+1) + "C" + std::to_string(col+1));
-        if (locuri[rand][col] == OCUPAT)
-            throw std::runtime_error("Locul R" + std::to_string(rand+1) +
-                "C" + std::to_string(col+1) + " este deja ocupat!");
-        locuri[rand][col] = OCUPAT;
-    }
-
-    void selecteazaLoc(int rand, int col) {
-        if (rand < 0 || rand >= randuri || col < 0 || col >= coloane)
-            throw std::out_of_range("Index loc invalid!");
-        if (locuri[rand][col] == LIBER)
-            locuri[rand][col] = SELECTAT;
-        else if (locuri[rand][col] == SELECTAT)
-            locuri[rand][col] = LIBER;
-    }
-
-    void reseteazaSelectie() {
-        for (auto& rand : locuri)
-            for (auto& loc : rand)
-                if (loc == SELECTAT) loc = LIBER;
-    }
-
-    int numarLocuriLibere() const {
-        int cnt = 0;
-        for (auto& rand : locuri)
-            for (auto& loc : rand)
-                if (loc == LIBER) cnt++;
-        return cnt;
-    }
-
-    std::vector<std::pair<int,int>> getLocuriSelectate() const {
-        std::vector<std::pair<int,int>> sel;
-        for (int r = 0; r < randuri; r++)
-            for (int c = 0; c < coloane; c++)
-                if (locuri[r][c] == SELECTAT)
-                    sel.push_back({r, c});
-        return sel;
-    }
-
-    StareLoc getStare(int r, int c) const { return locuri[r][c]; }
-};
-
-// ============================================================
-// CLASA REZERVARE
-// ============================================================
-class Rezervare {
-public:
-    std::string client;
-    std::string filmTitlu;
-    std::string metoda;
-    std::vector<std::string> locuri;
-    int total;
-
-    Rezervare(const std::string& c, const std::string& f,
-              const std::string& m, const std::vector<std::string>& l, int t)
-        : client(c), filmTitlu(f), metoda(m), locuri(l), total(t) {}
-};
-
-// ============================================================
-// CLASA CINEMATOGRAF - agregeaza sali si filme
-// ============================================================
-class Cinematograf {
-public:
-    std::string nume;
-    std::vector<Film> filme;
-    std::vector<Sala> sali;
-    std::vector<Rezervare> rezervari;
-
-    Cinematograf(const std::string& n) : nume(n) {}
-
-    void adaugaFilm(const Film& f) { filme.push_back(f); }
-    void adaugaSala(const Sala& s) { sali.push_back(s); }
-
-    // Afiseaza filmele disponibile
-    std::vector<Film>& getFilme() { return filme; }
-
-    // Returneaza sala pentru un film
-    Sala& getSalaForFilm(int filmIdx) {
-        int nrSala = filme[filmIdx].nrSala;
-        for (auto& s : sali)
-            if (s.nrSala == nrSala) return s;
-        throw std::runtime_error("Sala negasita pentru filmul selectat!");
-    }
-
-    void adaugaRezervare(const Rezervare& r) { rezervari.push_back(r); }
-};
 
 // ============================================================
 // HELPER UI
@@ -213,44 +80,40 @@ int main() {
     Cinematograf cinema("Happy Cinema");
 
     // Adauga filme
-    cinema.adaugaFilm(Film("Interstellar",  "IMAX","SF",     "20:00",169,1));
-    cinema.adaugaFilm(Film("Dune: Part Two","4DX", "Actiune","18:30",166,2));
-    cinema.adaugaFilm(Film("Oppenheimer",   "3D",  "Drama",  "21:45",180,3));
-    cinema.adaugaFilm(Film("The Batman",    "2D",  "Actiune","16:00",176,4));
+    cinema.adaugaFilm(new Film("Interstellar",  "IMAX","SF",     "20:00",169,1));
+    cinema.adaugaFilm(new Film("Dune: Part Two","4DX", "Actiune","18:30",166,2));
+    cinema.adaugaFilm(new Film("Oppenheimer",   "3D",  "Drama",  "21:45",180,3));
+    cinema.adaugaFilm(new Film("The Batman",    "2D",  "Actiune","16:00",176,4));
 
     // Adauga sali
-    cinema.adaugaSala(Sala(1, 6, 10));
-    cinema.adaugaSala(Sala(2, 6, 10));
-    cinema.adaugaSala(Sala(3, 6, 10));
-    cinema.adaugaSala(Sala(4, 6, 10));
+    cinema.adaugaSala(new Sala(1, 6, 10));
+    cinema.adaugaSala(new Sala(2, 6, 10));
+    cinema.adaugaSala(new Sala(3, 6, 10));
+    cinema.adaugaSala(new Sala(4, 6, 10));
 
-    // Seteaza locuri ocupate initial pentru fiecare sala
+    // Seteaza locuri ocupate initial
     try {
-        auto& s1 = cinema.sali[0];
+        Sala* s1 = cinema.getSala(0);
         for (auto& p : std::vector<std::pair<int,int>>{{0,2},{0,7},{1,4},{2,1},{2,8},{3,0},{4,5},{5,3},{5,9}})
-            s1.ocupaLoc(p.first, p.second);
+            s1->ocupaLoc(p.first, p.second);
 
-        auto& s2 = cinema.sali[1];
+        Sala* s2 = cinema.getSala(1);
         for (auto& p : std::vector<std::pair<int,int>>{{0,1},{1,3},{2,5},{3,7},{4,2},{5,8},{0,5},{3,3}})
-            s2.ocupaLoc(p.first, p.second);
+            s2->ocupaLoc(p.first, p.second);
 
-        auto& s3 = cinema.sali[2];
+        Sala* s3 = cinema.getSala(2);
         for (auto& p : std::vector<std::pair<int,int>>{{0,5},{1,1},{2,9},{3,4},{4,0},{5,6},{1,8},{4,7}})
-            s3.ocupaLoc(p.first, p.second);
+            s3->ocupaLoc(p.first, p.second);
 
-        auto& s4 = cinema.sali[3];
+        Sala* s4 = cinema.getSala(3);
         for (auto& p : std::vector<std::pair<int,int>>{{0,3},{1,7},{2,2},{3,9},{4,4},{5,1},{2,6},{3,5}})
-            s4.ocupaLoc(p.first, p.second);
-    } catch (const std::exception& e) {
-        // Eroare la initializare - nu ar trebui sa se intample
-    }
+            s4->ocupaLoc(p.first, p.second);
+    } catch (const std::exception& e) {}
 
     Screen currentScreen = SALA;
     int selFilmIdx = 0;
-
     const float GX=310.f,GY=130.f,SW=26.f,SH=22.f,SGX=5.f,SGY=5.f;
 
-    // Stare comanda curenta
     struct ComandaCurenta {
         std::string client, film;
         std::vector<std::string> locuri;
@@ -295,21 +158,16 @@ int main() {
                     }
 
                     if(currentScreen==SALA){
-                        Sala& salaC = cinema.getSalaForFilm(selFilmIdx);
-                        int ROWS = salaC.randuri, COLS = salaC.coloane;
+                        Sala* salaC = cinema.getSalaForFilm(selFilmIdx);
+                        int ROWS=salaC->getRanduri(), COLS=salaC->getColoane();
 
-                        // Click pe locuri
                         for(int r=0;r<ROWS;r++)
                             for(int c=0;c<COLS;c++){
-                                sf::FloatRect rect(
-                                    {GX+c*(SW+SGX), GY+r*(SH+SGY)},
-                                    {22.f, 18.f});
-                                if(rect.contains(mp) && salaC.getStare(r,c)!=Sala::OCUPAT){
-                                    try {
-                                        salaC.selecteazaLoc(r, c);
-                                    } catch(const std::exception& e) {
-                                        errMsg = e.what();
-                                        showErr=true; errClock.restart();
+                                sf::FloatRect rect({GX+c*(SW+SGX),GY+r*(SH+SGY)},{22.f,18.f});
+                                if(rect.contains(mp) && salaC->getStare(r,c)!=Sala::OCUPAT){
+                                    try { salaC->selecteazaLoc(r,c); }
+                                    catch(const std::exception& e){
+                                        errMsg=e.what(); showErr=true; errClock.restart();
                                     }
                                 }
                             }
@@ -317,40 +175,38 @@ int main() {
                         typingClient=inputBox.getGlobalBounds().contains(mp);
 
                         if(btnContinua.contains(mp)){
-                            auto sel = salaC.getLocuriSelectate();
+                            auto sel=salaC->getLocuriSelectate();
                             if(sel.empty()){
                                 errMsg="! Selecteaza cel putin un loc!";
                                 showErr=true; errClock.restart();
                             } else {
                                 std::vector<std::string> locStr;
-                                for(auto& p : sel)
+                                for(auto& p:sel)
                                     locStr.push_back("R"+std::to_string(p.first+1)+"C"+std::to_string(p.second+1));
                                 comanda.client = clientName.empty()?"Anonim":clientName;
-                                comanda.film   = cinema.getFilme()[selFilmIdx].titlu;
+                                comanda.film   = cinema.getFilm(selFilmIdx)->getTitlu();
                                 comanda.locuri = locStr;
-                                comanda.total  = (int)sel.size() * cinema.getFilme()[selFilmIdx].getPret();
+                                comanda.total  = (int)sel.size()*cinema.getFilm(selFilmIdx)->getPret();
                                 comanda.activa = true;
-                                metodaPlata    = 0;
-                                plataConfirmata= false;
-                                currentScreen  = PLATA;
+                                metodaPlata=0; plataConfirmata=false;
+                                currentScreen=PLATA;
                             }
                         }
 
                         if(btnRst.contains(mp)){
-                            salaC.reseteazaSelectie();
+                            salaC->reseteazaSelectie();
                             clientName=""; showErr=false; typingClient=false;
                         }
 
-                        for(int i=0;i<(int)cinema.getFilme().size();i++){
+                        for(int i=0;i<cinema.getNumarFilme();i++){
                             auto fb=makeRect(8,200.f+i*38.f,278,32,C_SURFACE);
-                            if(fb.getGlobalBounds().contains(mp) && selFilmIdx!=i){
-                                cinema.getSalaForFilm(selFilmIdx).reseteazaSelectie();
+                            if(fb.getGlobalBounds().contains(mp)&&selFilmIdx!=i){
+                                cinema.getSalaForFilm(selFilmIdx)->reseteazaSelectie();
                                 selFilmIdx=i;
                                 clientName=""; showErr=false; typingClient=false;
                             }
                         }
                     }
-
                     else if(currentScreen==PLATA){
                         if(btnCash.contains(mp)) metodaPlata=1;
                         if(btnCard.contains(mp)) metodaPlata=2;
@@ -361,40 +217,34 @@ int main() {
                                 showErr=true; errClock.restart();
                             } else if(comanda.activa){
                                 try {
-                                    Sala& salaC = cinema.getSalaForFilm(selFilmIdx);
-                                    // Confirma locurile selectate ca ocupate
-                                    for(int r=0;r<salaC.randuri;r++)
-                                        for(int c=0;c<salaC.coloane;c++)
-                                            if(salaC.getStare(r,c)==Sala::SELECTAT)
-                                                salaC.ocupaLoc(r,c);
-
+                                    Sala* salaC=cinema.getSalaForFilm(selFilmIdx);
+                                    for(int r=0;r<salaC->getRanduri();r++)
+                                        for(int c=0;c<salaC->getColoane();c++)
+                                            if(salaC->getStare(r,c)==Sala::SELECTAT)
+                                                salaC->ocupaLoc(r,c);
                                     std::string met=(metodaPlata==1)?"cash":"card";
                                     cinema.adaugaRezervare(Rezervare(
-                                        comanda.client, comanda.film,
-                                        met, comanda.locuri, comanda.total));
-
+                                        comanda.client,comanda.film,
+                                        met,comanda.locuri,comanda.total));
                                     comanda.activa=false;
                                     plataConfirmata=true;
                                     plataClock.restart();
                                     clientName=""; typingClient=false; showErr=false;
                                 } catch(const std::exception& e){
-                                    errMsg = std::string("Eroare: ") + e.what();
+                                    errMsg=std::string("Eroare: ")+e.what();
                                     showErr=true; errClock.restart();
                                 }
                             }
                         }
-
                         if(btnInapoi.contains(mp)){
                             currentScreen=SALA;
-                            comanda.activa=false;
-                            metodaPlata=0;
-                            showErr=false;
+                            comanda.activa=false; metodaPlata=0; showErr=false;
                         }
                     }
                 }
             }
             if(auto* te=ev->getIf<sf::Event::TextEntered>()){
-                if(typingClient && currentScreen==SALA){
+                if(typingClient&&currentScreen==SALA){
                     if(te->unicode=='\b'){ if(!clientName.empty()) clientName.pop_back(); }
                     else if(te->unicode>=32&&te->unicode<128&&clientName.size()<24)
                         clientName+=(char)te->unicode;
@@ -402,10 +252,9 @@ int main() {
             }
         }
 
-        if(showErr && errClock.getElapsedTime().asSeconds()>3.f) showErr=false;
-        if(plataConfirmata && plataClock.getElapsedTime().asSeconds()>2.f){
-            plataConfirmata=false;
-            currentScreen=RAPORT;
+        if(showErr&&errClock.getElapsedTime().asSeconds()>3.f) showErr=false;
+        if(plataConfirmata&&plataClock.getElapsedTime().asSeconds()>2.f){
+            plataConfirmata=false; currentScreen=RAPORT;
         }
 
         window.clear(C_BG);
@@ -426,53 +275,54 @@ int main() {
             bool act=(currentScreen==(Screen)i);
             navBtns[i].box.setFillColor(act?C_DARK:sf::Color::Transparent);
             if(act) window.draw(makeRect(navBtns[i].box.getPosition().x,88,
-                                          navBtns[i].box.getSize().x,3,C_GOLD));
+                                navBtns[i].box.getSize().x,3,C_GOLD));
             navBtns[i].draw(window,font);
         }
 
         // ======== SALA ========
         if(currentScreen==SALA){
-            auto& filme = cinema.getFilme();
-            Sala& salaC = cinema.getSalaForFilm(selFilmIdx);
-            int ROWS=salaC.randuri, COLS=salaC.coloane;
+            Sala* salaC=cinema.getSalaForFilm(selFilmIdx);
+            Film* filmC=cinema.getFilm(selFilmIdx);
+            int ROWS=salaC->getRanduri(), COLS=salaC->getColoane();
 
             window.draw(makeRect(0,91,295,549,C_SURFACE,C_BORDER,1.f));
             window.draw(makeText("FILM SELECTAT",font,9,C_MUTED,12,105));
             window.draw(makeRect(8,120,278,50,C_DARK,C_BORDER,1.f));
-            window.draw(makeText(filme[selFilmIdx].titlu,font,13,C_GOLD_L,16,128));
-            window.draw(makeText(filme[selFilmIdx].getInfo(),font,10,C_MUTED,16,147));
-            window.draw(makeText("Pret: "+std::to_string(filme[selFilmIdx].getPret())+" RON/bilet",font,10,C_GOLD,16,158));
+            window.draw(makeText(filmC->getTitlu(),font,13,C_GOLD_L,16,128));
+            window.draw(makeText(filmC->getInfo(),font,10,C_MUTED,16,144));
+            window.draw(makeText("Pret: "+std::to_string(filmC->getPret())+" RON/bilet",font,10,C_GOLD,16,158));
             window.draw(makeText("ALEGE FILM",font,9,C_MUTED,12,185));
-            for(int i=0;i<(int)filme.size();i++){
+            for(int i=0;i<cinema.getNumarFilme();i++){
+                Film* f=cinema.getFilm(i);
                 bool isSel=(i==selFilmIdx);
                 window.draw(makeRect(8,200.f+i*38.f,278,32,
                     isSel?C_SURFACE2:sf::Color::Transparent,isSel?C_GOLD:C_BORDER,1.f));
-                window.draw(makeText(filme[i].titlu,font,12,isSel?C_GOLD:C_TEXT,16,208.f+i*38.f));
-                window.draw(makeText(filme[i].format+" | "+std::to_string(filme[i].getPret())+" RON",font,10,isSel?C_GOLD:C_MUTED,16,222.f+i*38.f));
+                window.draw(makeText(f->getTitlu(),font,12,isSel?C_GOLD:C_TEXT,16,208.f+i*38.f));
+                window.draw(makeText(f->getFormat()+" | "+std::to_string(f->getPret())+" RON",
+                    font,10,isSel?C_GOLD:C_MUTED,16,222.f+i*38.f));
             }
-            int nSel=(int)salaC.getLocuriSelectate().size();
+            int nSel=(int)salaC->getLocuriSelectate().size();
             window.draw(makeText("SUMAR",font,9,C_MUTED,12,362));
             window.draw(makeRect(8,375,278,70,C_DARK,C_BORDER,1.f));
             window.draw(makeText("Locuri selectate:",font,11,C_MUTED,16,383));
             window.draw(makeText(std::to_string(nSel),font,11,C_GOLD,220,383));
             window.draw(makeText("Total:",font,11,C_MUTED,16,403));
-            window.draw(makeText(std::to_string(nSel*filme[selFilmIdx].getPret())+" RON",font,11,C_GOLD,200,403));
+            window.draw(makeText(std::to_string(nSel*filmC->getPret())+" RON",font,11,C_GOLD,200,403));
 
-            window.draw(makeText("SALA "+std::to_string(filme[selFilmIdx].nrSala)+
-                " - "+filme[selFilmIdx].titlu,font,10,C_GOLD,310,100));
+            window.draw(makeText("SALA "+std::to_string(filmC->getNrSala())+
+                " - "+filmC->getTitlu(),font,10,C_GOLD,310,100));
             window.draw(makeRect(GX-10,113,COLS*(SW+SGX)+10,12,C_BORDER));
             window.draw(makeText("E C R A N",font,8,C_MUTED,GX+110,115));
             for(int r=0;r<ROWS;r++)
                 window.draw(makeText("R"+std::to_string(r+1),font,9,C_MUTED,GX-28,GY+r*(SH+SGY)+4));
 
-            // Deseneaza locurile din matricea Sala
             for(int r=0;r<ROWS;r++)
                 for(int c=0;c<COLS;c++){
                     sf::RectangleShape loc;
                     loc.setSize({22.f,18.f});
-                    loc.setPosition({GX+c*(SW+SGX), GY+r*(SH+SGY)});
+                    loc.setPosition({GX+c*(SW+SGX),GY+r*(SH+SGY)});
                     loc.setOutlineThickness(1.f);
-                    switch(salaC.getStare(r,c)){
+                    switch(salaC->getStare(r,c)){
                         case Sala::LIBER:
                             loc.setFillColor({13,43,26}); loc.setOutlineColor(C_GREEN); break;
                         case Sala::OCUPAT:
@@ -506,24 +356,24 @@ int main() {
         }
         // ======== FILME ========
         else if(currentScreen==FILME){
-            auto& filme = cinema.getFilme();
             window.draw(makeText("FILME IN PROGRAM",font,10,C_GOLD,20,105));
             window.draw(makeRect(20,120,920,1,C_BORDER));
             std::vector<std::string> hdrs={"#","TITLU","FORMAT","DURATA","GEN","ORA","SALA","PRET"};
             float hx[]={20,60,260,360,440,560,650,740};
             for(int i=0;i<8;i++) window.draw(makeText(hdrs[i],font,9,C_MUTED,hx[i],126));
             window.draw(makeRect(20,140,920,1,C_BORDER));
-            for(int i=0;i<(int)filme.size();i++){
+            for(int i=0;i<cinema.getNumarFilme();i++){
+                Film* f=cinema.getFilm(i);
                 float ry=150.f+i*40.f;
                 window.draw(makeRect(20,ry,920,34,i%2==0?C_SURFACE:sf::Color::Transparent));
                 window.draw(makeText(std::to_string(i+1),font,12,C_MUTED,hx[0],ry+8));
-                window.draw(makeText(filme[i].titlu,font,13,C_TEXT,hx[1],ry+8));
-                window.draw(makeText(filme[i].format,font,12,C_GOLD,hx[2],ry+8));
-                window.draw(makeText(std::to_string(filme[i].durata)+"min",font,12,C_MUTED,hx[3],ry+8));
-                window.draw(makeText(filme[i].gen,font,12,C_MUTED,hx[4],ry+8));
-                window.draw(makeText(filme[i].ora,font,12,C_GOLD_L,hx[5],ry+8));
-                window.draw(makeText("Sala "+std::to_string(filme[i].nrSala),font,12,C_TEXT,hx[6],ry+8));
-                window.draw(makeText(std::to_string(filme[i].getPret())+" RON",font,12,C_GOLD,hx[7],ry+8));
+                window.draw(makeText(f->getTitlu(),font,13,C_TEXT,hx[1],ry+8));
+                window.draw(makeText(f->getFormat(),font,12,C_GOLD,hx[2],ry+8));
+                window.draw(makeText(std::to_string(f->getDurata())+"min",font,12,C_MUTED,hx[3],ry+8));
+                window.draw(makeText(f->getGen(),font,12,C_MUTED,hx[4],ry+8));
+                window.draw(makeText(f->getOra(),font,12,C_GOLD_L,hx[5],ry+8));
+                window.draw(makeText("Sala "+std::to_string(f->getNrSala()),font,12,C_TEXT,hx[6],ry+8));
+                window.draw(makeText(std::to_string(f->getPret())+" RON",font,12,C_GOLD,hx[7],ry+8));
                 window.draw(makeRect(20,ry+34,920,1,C_BORDER));
             }
         }
@@ -548,7 +398,6 @@ int main() {
                 window.draw(makeText(locsStr,font,11,C_TEXT,130,212));
                 window.draw(makeText("Total de plata:",font,13,C_MUTED,35,234));
                 window.draw(makeText(std::to_string(comanda.total)+" RON",font,16,C_GOLD,200,232));
-
                 window.draw(makeText("METODA DE PLATA",font,9,C_MUTED,20,278));
                 window.draw(makeRect(20,292,920,1,C_BORDER));
                 btnCash.box.setFillColor(metodaPlata==1?C_GOLD:C_SURFACE);
@@ -571,11 +420,11 @@ int main() {
         }
         // ======== RAPORT ========
         else if(currentScreen==RAPORT){
-            auto& rez = cinema.rezervari;
+            auto& rez=cinema.getRezervari();
             window.draw(makeText("RAPORT REZERVARI",font,10,C_GOLD,20,105));
             window.draw(makeRect(20,120,920,1,C_BORDER));
             int totalInc=0,totalBilete=0;
-            for(auto& r:rez){totalInc+=r.total;totalBilete+=(int)r.locuri.size();}
+            for(auto& r:rez){totalInc+=r.getTotal();totalBilete+=(int)r.getLocuri().size();}
             window.draw(makeRect(20,130,200,60,C_DARK,C_BORDER,1));
             window.draw(makeRect(240,130,200,60,C_DARK,C_BORDER,1));
             window.draw(makeRect(460,130,200,60,C_DARK,C_BORDER,1));
@@ -596,13 +445,13 @@ int main() {
                 float ty=ry+26.f+i*34.f;
                 auto& r=rez[i];
                 std::string locs;
-                for(int j=0;j<(int)r.locuri.size();j++){if(j)locs+=", ";locs+=r.locuri[j];}
+                for(int j=0;j<(int)r.getLocuri().size();j++){if(j)locs+=", ";locs+=r.getLocuri()[j];}
                 window.draw(makeText("#"+std::to_string(i+1),font,11,C_MUTED,rx[0],ty));
-                window.draw(makeText(r.client,font,12,C_TEXT,rx[1],ty));
-                window.draw(makeText(r.filmTitlu,font,12,C_TEXT,rx[2],ty));
-                window.draw(makeText(r.metoda,font,12,r.metoda=="cash"?C_GREEN:C_GOLD,rx[3],ty));
+                window.draw(makeText(r.getClient(),font,12,C_TEXT,rx[1],ty));
+                window.draw(makeText(r.getFilmTitlu(),font,12,C_TEXT,rx[2],ty));
+                window.draw(makeText(r.getMetoda(),font,12,r.getMetoda()=="cash"?C_GREEN:C_GOLD,rx[3],ty));
                 window.draw(makeText(locs,font,11,C_MUTED,rx[4],ty));
-                window.draw(makeText(std::to_string(r.total)+" RON",font,12,C_GOLD,rx[5],ty));
+                window.draw(makeText(std::to_string(r.getTotal())+" RON",font,12,C_GOLD,rx[5],ty));
                 window.draw(makeRect(20,ty+20,920,1,C_BORDER));
             }
         }
