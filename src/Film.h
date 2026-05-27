@@ -4,7 +4,7 @@
 class Film {
 private:
     std::string titlu;
-    std::string format; // 2D, 3D, IMAX, 4DX
+    std::string format;
     std::string gen;
     std::string ora;
     int durata;
@@ -15,16 +15,19 @@ public:
          const std::string& gen, const std::string& ora,
          int durata, int nrSala);
 
-    std::string getTitlu() const;
+    std::string getTitlu()  const;
     std::string getFormat() const;
-    std::string getGen() const;
-    std::string getOra() const;
-    int getDurata() const;
-    int getNrSala() const;
+    std::string getGen()    const;
+    std::string getOra()    const;
+    int         getDurata() const;
+    int         getNrSala() const;
 
-    // Calcul pret in functie de tipul filmului (cerinta facultativa)
+    // Pret de baza in functie de format
     int getPret() const;
 
-    std::string getInfo() const;
-    void afiseaza() const;
+    // Pret dinamic: +20% weekend, reduceri tip bilet (copil -30%, senior -20%)
+    int getPretDinamic(bool weekend, const std::string& tipBilet) const;
+
+    std::string getInfo()    const;
+    void        afiseaza()   const;
 };

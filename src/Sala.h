@@ -4,32 +4,34 @@
 
 class Sala {
 public:
-    enum StareLoc { LIBER, OCUPAT, SELECTAT };
+    enum StareLoc { LIBER, OCUPAT, SELECTAT, VIP_LIBER, VIP_OCUPAT, VIP_SELECTAT };
 
 private:
     int numar;
     int randuri;
     int coloane;
-    std::vector<std::vector<StareLoc>> locuri; // matrice de locuri
+    int randuriVIP;   // primele N randuri sunt VIP
+    std::vector<std::vector<StareLoc>> locuri;
 
 public:
-    Sala(int numar, int randuri, int coloane);
+    // randuriVIP = 0 inseamna fara VIP
+    Sala(int numar, int randuri, int coloane, int randuriVIP = 0);
 
-    int getNumar()   const;
-    int getRanduri() const;
-    int getColoane() const;
+    int getNumar()    const;
+    int getRanduri()  const;
+    int getColoane()  const;
+    int getRanduriVIP() const;
+
+    bool esteVIP(int rand) const;
 
     StareLoc getStare(int rand, int col) const;
 
-    // Arunca std::out_of_range daca index invalid
-    // Arunca std::runtime_error daca locul e deja ocupat
     void ocupaLoc(int rand, int col);
-
     void selecteazaLoc(int rand, int col);
     void reseteazaSelectie();
 
     bool esteLiber(int rand, int col) const;
-    int numarLocuriLibere() const;
+    int  numarLocuriLibere() const;
 
     std::vector<std::pair<int,int>> getLocuriSelectate() const;
 
